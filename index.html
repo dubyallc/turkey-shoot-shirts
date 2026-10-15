@@ -50,6 +50,12 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <p class="note">Payment by Cash App or Venmo only. Please put your name in the payment note.</p>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
 <p class="note"><b>Orders are confirmed once payment is received.</b></p>
+<div id="cabox" style="display:none;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0;text-align:center">
+<div>Send exactly</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="tt">0</span></div>
+<div>to <b>$SamWhisenhunt</b> on Cash App</div>
+<p><button type="button" class="alt" id="cpamt">Copy amount</button></p>
+<div>Put your name in the note:<br><b id="cnote">Your Name - Turkey Shoot shirts</b></div>
+<p><button type="button" class="alt" id="cpnote">Copy note</button></p></div>
 <p><button type="button" id="paybtn" style="width:100%">Pay $<span class="tt">0</span> Now</button></p>
 <div id="step2" style="display:none;border:2px dashed var(--orange);border-radius:10px;padding:10px;margin:10px 0">
 <label>Name or @username your payment came from *</label><input id="payer">
@@ -79,6 +85,12 @@ d.oninput=d.onchange=calc;items.appendChild(d);calc()}
 function lines(){return[...items.children].map(r=>{const p=r.querySelector(".p").value,s=r.querySelector(".s").value,q=Math.max(1,parseInt(r.querySelector(".q").value)||1);return{p,s,q,each:price(p,s),sub:price(p,s)*q}})}
 function calc(){const t=lines().reduce((a,l)=>a+l.sub,0);document.getElementById("tot").textContent=t;document.querySelectorAll(".tt").forEach(x=>x.textContent=t)}
 document.getElementById("add").onclick=addRow;addRow();
+function total(){return lines().reduce((a,l)=>a+l.sub,0)}
+function noteTxt(){return (document.getElementById("f").name.value.trim()||"Your Name")+" - Turkey Shoot shirts"}
+async function copy(t,b){try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(_){}a.remove()}if(b){const o=b.textContent;b.textContent="Copied!";setTimeout(()=>b.textContent=o,1500)}}
+function upBox(){const f=document.getElementById("f");cabox.style.display=f.pay.value=="Cash App"?"block":"none";cnote.textContent=noteTxt()}
+cpamt.onclick=()=>copy(String(total()),cpamt);cpnote.onclick=()=>copy(noteTxt(),cpnote);
+document.getElementById("f").addEventListener("input",upBox);document.getElementById("f").addEventListener("change",upBox);
 let paid=false;
 function canSubmit(){document.getElementById("sub").disabled=!(paid&&sent.checked&&payer.value.trim())}
 function payLink(){const f=document.getElementById("f"),T=lines().reduce((a,l)=>a+l.sub,0),name=f.name.value.trim();
@@ -86,7 +98,7 @@ return f.pay.value=="Cash App"?`https://cash.app/$${CASHTAG}/${T}`:`https://venm
 function resetPay(){paid=false;step2.style.display="none";sent.checked=false;canSubmit()}
 document.getElementById("paybtn").onclick=()=>{const f=document.getElementById("f");
 if(!f.name.value.trim()||!f.phone.value.trim()||!f.pay.value){err.textContent="Please fill in your name, phone, and pick Cash App or Venmo first.";f.reportValidity();return}
-err.textContent="";window.open(payLink(),"_blank");paid=true;pmname.textContent=f.pay.value;step2.style.display="block";canSubmit()};
+err.textContent="";if(f.pay.value=="Cash App")copy(String(total()));window.open(payLink(),"_blank");paid=true;pmname.textContent=f.pay.value;step2.style.display="block";canSubmit()};
 sent.onchange=payer.oninput=canSubmit;
 document.querySelectorAll('input[name=pay]').forEach(r=>r.onchange=resetPay);
 items.addEventListener("change",resetPay);items.addEventListener("input",resetPay);
