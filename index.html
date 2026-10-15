@@ -48,14 +48,18 @@ a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;paddin
 <label>Phone *</label><input name="phone" type="tel" required>
 <label>Email *</label><input name="email" type="email" required>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
-<p class="note">Pay by PayPal, card, or Venmo on the next screen to complete your order. <b>Orders are confirmed once payment is received.</b></p>
+<p class="note">Pay by PayPal, card, or Venmo on the next screen to complete your order. A processing fee is added at payment so the fundraiser nets the full shirt price. <b>Orders are confirmed once payment is received.</b></p>
 <p><button type="submit" id="sub" style="width:100%">Order</button></p>
 <p class="note" id="err"></p></form>
 
 <div id="paycard" class="card" style="display:none"><h2>Pay for Your Order</h2>
 <div style="text-align:center;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0">
 <div>Your order number:</div><div style="font-size:2rem;font-weight:bold;color:var(--brown)" id="onum"></div>
-<div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
+<div style="text-align:left;max-width:280px;margin:8px auto;font-size:1.05rem;line-height:1.7">
+<div>Shirts subtotal: <b>$<span id="subX">0</span></b></div>
+<div>Processing fee: <b>$<span id="feeF">0</span></b></div>
+<div style="font-size:1.5rem;font-weight:bold;color:var(--brown);border-top:2px solid var(--orange);padding-top:6px;margin-top:4px">Total: $<span id="totT">0</span></div>
+</div>
 <p class="note"><b>Your order is not complete until you pay.</b> Please pay now using one of the options below.</p></div>
 <pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
 <div id="ppbtns" style="margin:10px 0"></div>
@@ -71,6 +75,8 @@ const ORDER_EMAIL = "sam@dubyallc.com";
 /* ==================== */
 const SIZES=["YS","YM","YL","S","M","L","XL","2X","3X"];
 const price=(p,s)=>{const y=s[0]=="Y",b=s=="2X"||s=="3X";return p=="Hoodie"?(y?35:b?45:40):(b?35:30)};
+const money=n=>Number(n).toFixed(2);
+function feeOf(X){X=Number(X);const T=Math.ceil((X+0.49)/0.9701*100)/100,F=Math.round((T-X)*100)/100;return{X,F,T}};
 const $=id=>document.getElementById(id);
 const items=$("items");
 function addRow(){const d=document.createElement("div");d.className="row";
@@ -92,27 +98,28 @@ if(!f.reportValidity()||!f.name.value.trim()||!f.phone.value.trim()||!/^[^\s@]+@
 const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),email=f.email.value.trim(),num=genNum();
 const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join("\n")+`\nTOTAL: $${T}`;
 const btn=$("sub");btn.disabled=true;btn.textContent="Saving order...";err.textContent="";
-try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – AWAITING PAYMENT`,"Order #":num,Status:"awaiting payment",Name:name,Phone:f.phone.value,Email:email,Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
+const fees=feeOf(T);
+try{await send({_subject:`Shirt Order ${num}: ${name} – $${money(T)} – AWAITING PAYMENT`,"Order #":num,Status:"awaiting payment",Name:name,Phone:f.phone.value,Email:email,Order:summary,Total:"$"+money(T),"Processing fee":"$"+money(fees.F),Charged:"$"+money(fees.T),Notes:f.notes.value||"(none)"})}
 catch(x){btn.disabled=false;btn.textContent="Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
-O={num,name,email,T,summary};save();showPay()};
+O={num,name,email,T,summary,F:fees.F,C:fees.T};save();showPay()};
 const KEY="tsShirtOrder";
 function save(){try{localStorage.setItem(KEY,JSON.stringify({O,ts:Date.now()}))}catch(e){}}
 function showPay(){const {num,name,T,summary}=O,note=`Order ${num} ${name}`;
-$("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;
+$("onum").textContent=num;$("subX").textContent=money(T);$("feeF").textContent=money(O.F);$("totT").textContent=money(O.C);$("psum").textContent=summary;
 renderPP();
 $("f").style.display="none";$("done").style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()}
-function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;showPay()}}catch(e){}}
+function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;if(O.C==null){const f=feeOf(O.T);O.F=f.F;O.C=f.T}showPay()}}catch(e){}}
 window.addEventListener("pageshow",restore);restore();
-async function confirmPaid(pmv,pf){try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
+async function confirmPaid(pmv,pf){try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${money(O.T)} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+money(O.T),"Processing fee":"$"+money(O.F),Charged:"$"+money(O.C),Order:O.summary})}
 catch(x){$("pperr").textContent="Payment went through, but the confirmation email failed. Please screenshot this page and text us your order #.";return}
 try{localStorage.removeItem(KEY)}catch(e){}$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
-sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()}
+sum.textContent=O.summary;amt.textContent="$"+money(O.C);pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()}
 let ppDone=false,ppSrc="paypal";
 function renderPP(){if(ppDone)return;if(!window.paypal||!paypal.Buttons){$("pperr").textContent="PayPal is loading…";setTimeout(renderPP,1500);return}
 ppDone=true;$("pperr").textContent="";
 paypal.Buttons({style:{layout:"vertical",shape:"rect",label:"pay"},
 onClick:d=>{ppSrc=(d&&d.fundingSource)||"paypal"},
-createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{currency_code:"USD",value:String(O.T)},description:"Turkey Shoot shirts – Order "+O.num,custom_id:O.num,invoice_id:O.num}]}),
+createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{currency_code:"USD",value:money(O.C),breakdown:{item_total:{currency_code:"USD",value:money(O.T)},handling:{currency_code:"USD",value:money(O.F)}}},description:"Turkey Shoot shirts – Order "+O.num,custom_id:O.num,invoice_id:O.num}]}),
 onApprove:(d,a)=>a.order.capture().then(det=>{const n=det&&det.payer&&det.payer.name;const pf=n?((n.given_name||"")+" "+(n.surname||"")).trim():(det&&det.payer&&det.payer.email_address)||O.name;
 const m=ppSrc=="card"?"Card":ppSrc=="venmo"?"Venmo (PayPal)":"PayPal";return confirmPaid(m,pf||O.name)}),
 onError:e=>{$("pperr").textContent="PayPal had a problem: "+(e&&e.message||e)+". Please try again."}
