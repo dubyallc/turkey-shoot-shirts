@@ -26,6 +26,7 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 @media(max-width:520px){.row{grid-template-columns:1fr 1fr}.imgs{grid-template-columns:1fr}}
 .deadline{background:var(--orange);color:#fff;text-align:center;padding:12px;border-radius:10px;margin:14px 0;font-size:1.05rem;border:2px solid var(--brown)}
 .event{background:#fffaf0;border:2px solid var(--brown2);border-radius:10px;padding:12px;margin:14px 0;text-align:center;line-height:1.5}.event a{color:var(--orange);font-weight:bold}
+a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;padding:12px 16px;font-size:1rem;font-weight:bold;text-align:center;text-decoration:none}a.btn.alt{background:var(--brown2)}
 </style></head><body>
 <header><h1>Ray Edward's Memorial Turkey Shoot</h1><p>Honoring His Life & Legacy</p></header>
 <main>
@@ -56,8 +57,8 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
 <p class="note"><b>Your order is not complete until you pay.</b> Please pay now, put your order number in the payment note, then tap <b>I've Paid</b> below.</p></div>
 <pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
-<a class="big" id="vlink" href="#" target="_blank" rel="noopener"><button type="button" style="width:100%">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</button></a>
-<a class="big" id="clink" href="#" target="_blank" rel="noopener"><button type="button" class="alt" style="width:100%">Pay with Cash App ($SamWhisenhunt)</button></a>
+<a class="big btn" id="vlink" href="#">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</a>
+<a class="big btn alt" id="clink" href="#">Pay with Cash App ($SamWhisenhunt)</a>
 <div style="background:#fffaf0;border:2px dashed var(--brown2);border-radius:10px;padding:10px;text-align:center">
 <div>In Cash App, <b>type this amount: $<span class="pt">0</span></b></div>
 <div>Put order # in the note: <b id="cnote"></b></div>
@@ -95,7 +96,7 @@ $("add").onclick=addRow;addRow();
 async function copy(t,b){try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(_){}a.remove()}if(b){const o=b.textContent;b.textContent="Copied!";setTimeout(()=>b.textContent=o,1500)}}
 function genNum(){const d=new Date(),p=n=>String(n).padStart(2,"0");return "W-"+p(d.getMonth()+1)+p(d.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase()}
 async function send(data){const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(Object.assign({_template:"box",_captcha:"false"},data))});if(!r.ok)throw 0}
-let O=null;
+let O=null,PM=null;
 $("f").onsubmit=async e=>{e.preventDefault();const f=e.target;
 if(!f.reportValidity()||!f.name.value.trim()||!f.phone.value.trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())){err.textContent="Please fill in your name, phone, and a valid email.";f.reportValidity();return}
 const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),email=f.email.value.trim(),num=genNum();
@@ -103,20 +104,25 @@ const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join
 const btn=$("sub");btn.disabled=true;btn.textContent="Saving order...";err.textContent="";
 try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – AWAITING PAYMENT`,"Order #":num,Status:"awaiting payment",Name:name,Phone:f.phone.value,Email:email,Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
 catch(x){btn.disabled=false;btn.textContent="Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
-O={num,name,email,T,summary};const note=`Order ${num} ${name}`;
+O={num,name,email,T,summary};PM=null;payer.value=name;save();showPay()};
+const MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform=="MacIntel"&&navigator.maxTouchPoints>1);
+const KEY="tsShirtOrder";
+function save(){try{localStorage.setItem(KEY,JSON.stringify({O,PM,payer:payer.value,ts:Date.now()}))}catch(e){}}
+function showPay(){const {num,name,T,summary}=O,note=`Order ${num} ${name}`;
 $("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
-$("vlink").href=`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
+$("vlink").href=MOBILE?`venmo://paycharge?txn=pay&recipients=${VENMO}&amount=${T}&note=${encodeURIComponent(note)}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
 $("clink").href=`https://cash.app/$${CASHTAG}/${T}`;
-payer.value=name;canPaid();f.style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()};
-let PM=null;
+canPaid();$("f").style.display="none";$("done").style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()}
+function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;PM=d.PM||null;payer.value=d.payer||O.name;showPay()}}catch(e){}}
 function canPaid(){$("paidbtn").disabled=!(PM&&payer.value.trim());$("pfname").textContent=payer.value.trim()||"(enter name)"}
-payer.oninput=canPaid;
+payer.oninput=()=>{canPaid();save()};
 $("chg").onclick=e=>{e.preventDefault();payer.style.display="block";payer.focus();$("paying").style.display="none"};
-$("vlink").addEventListener("click",()=>{PM="Venmo";canPaid()});
-$("clink").addEventListener("click",()=>{PM="Cash App";canPaid()});
+$("vlink").addEventListener("click",()=>{PM="Venmo";save();canPaid();if(MOBILE){const t=setTimeout(()=>{if(!document.hidden)location.href=`https://account.venmo.com/u/${VENMO}`},1500);const c=()=>{if(document.hidden)clearTimeout(t)};document.addEventListener("visibilitychange",c,{once:true});window.addEventListener("pagehide",()=>clearTimeout(t),{once:true})}});
+$("clink").addEventListener("click",()=>{PM="Cash App";save();canPaid()});
+window.addEventListener("pageshow",restore);restore();
 $("paidbtn").onclick=async()=>{const pmv=PM,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
 try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
 catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
-$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
+try{localStorage.removeItem(KEY)}catch(e){}$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
 sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()};
 </script></body></html>
