@@ -61,12 +61,12 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <div style="background:#fffaf0;border:2px dashed var(--brown2);border-radius:10px;padding:10px;text-align:center">
 <div>In Cash App, <b>type this amount: $<span class="pt">0</span></b></div>
 <div>Put order # in the note: <b id="cnote"></b></div>
-<p><button type="button" class="alt" id="cpnote">Copy note</button></p></div>
-<div style="border:2px dashed var(--orange);border-radius:10px;padding:10px;margin:14px 0">
-<label>Which did you use? *</label>
-<div class="pay"><label><input type="radio" name="pm" value="Venmo"> Venmo</label><label><input type="radio" name="pm" value="Cash App"> Cash App</label></div>
-<label>Name or @username your payment came from *</label><input id="payer">
+</div>
+<div style="margin:14px 0;text-align:center">
+<p class="note" id="paying">Paying from: <b id="pfname"></b> <a href="#" id="chg">(change)</a></p>
+<input id="payer" style="display:none" aria-label="Name your payment came from">
 <p><button type="button" id="paidbtn" style="width:100%" disabled>I've Paid</button></p>
+<p class="note" id="hint">Tap Venmo or Cash App above to pay, then come back and tap I've Paid.</p>
 <p class="note" id="err2"></p></div></div>
 
 <div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Order <b id="dnum"></b>:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
@@ -107,13 +107,14 @@ O={num,name,email,T,summary};const note=`Order ${num} ${name}`;
 $("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
 $("vlink").href=`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
 $("clink").href=`https://cash.app/$${CASHTAG}/${T}`;
-f.style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()};
-$("cpnote").onclick=()=>copy($("cnote").textContent,$("cpnote"));
-function canPaid(){$("paidbtn").disabled=!(document.querySelector('input[name=pm]:checked')&&payer.value.trim())}
-payer.oninput=canPaid;document.querySelectorAll('input[name=pm]').forEach(r=>r.onchange=canPaid);
-$("vlink").addEventListener("click",()=>{document.querySelector('input[name=pm][value=Venmo]').checked=true;canPaid()});
-$("clink").addEventListener("click",()=>{document.querySelector('input[name=pm][value="Cash App"]').checked=true;canPaid()});
-$("paidbtn").onclick=async()=>{const pmv=document.querySelector('input[name=pm]:checked').value,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
+payer.value=name;canPaid();f.style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()};
+let PM=null;
+function canPaid(){$("paidbtn").disabled=!(PM&&payer.value.trim());$("pfname").textContent=payer.value.trim()||"(enter name)"}
+payer.oninput=canPaid;
+$("chg").onclick=e=>{e.preventDefault();payer.style.display="block";payer.focus();$("paying").style.display="none"};
+$("vlink").addEventListener("click",()=>{PM="Venmo";canPaid()});
+$("clink").addEventListener("click",()=>{PM="Cash App";canPaid()});
+$("paidbtn").onclick=async()=>{const pmv=PM,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
 try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
 catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
 $("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
