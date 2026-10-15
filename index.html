@@ -27,7 +27,8 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 .deadline{background:var(--orange);color:#fff;text-align:center;padding:12px;border-radius:10px;margin:14px 0;font-size:1.05rem;border:2px solid var(--brown)}
 .event{background:#fffaf0;border:2px solid var(--brown2);border-radius:10px;padding:12px;margin:14px 0;text-align:center;line-height:1.5}.event a{color:var(--orange);font-weight:bold}
 a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;padding:12px 16px;font-size:1rem;font-weight:bold;text-align:center;text-decoration:none}a.btn.alt{background:var(--brown2)}
-</style></head><body>
+</style>
+<script src="https://www.paypal.com/sdk/js?client-id=BAARW0uizvq1zr-GsEysz4tHdcvilWxrK2PkpiWuP75MGTErm7ZHMPRl3bVhgnfrLl4WK9y142ZsW4BIuc&currency=USD&components=buttons&enable-funding=card,venmo"></script></head><body>
 <header><h1>Ray Edward's Memorial Turkey Shoot</h1><p>Honoring His Life & Legacy</p></header>
 <main>
 <div class="event"><b>6th Annual Ray Edwards Memorial Turkey Shoot</b><br>Thanksgiving Week, November 25–28, 2026 · Wednesday–Saturday, 7 PM nightly<br>2258 Bowman Branch Hwy, Rowesville, SC 29133<br><i>Honoring Ray Edwards and supporting a local family facing cancer.</i><br>More info: <a href="tel:+18037074107">803-707-4107</a> / <a href="mailto:info@dubyallc.com">info@dubyallc.com</a></div>
@@ -47,7 +48,7 @@ a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;paddin
 <label>Phone *</label><input name="phone" type="tel" required>
 <label>Email *</label><input name="email" type="email" required>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
-<p class="note">Pay by Venmo or Cash App on the next screen to complete your order. <b>Orders are confirmed once payment is received.</b></p>
+<p class="note">Pay by PayPal, card, or Venmo on the next screen to complete your order. <b>Orders are confirmed once payment is received.</b></p>
 <p><button type="submit" id="sub" style="width:100%">Order</button></p>
 <p class="note" id="err"></p></form>
 
@@ -55,19 +56,16 @@ a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;paddin
 <div style="text-align:center;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0">
 <div>Your order number:</div><div style="font-size:2rem;font-weight:bold;color:var(--brown)" id="onum"></div>
 <div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
-<p class="note"><b>Your order is not complete until you pay.</b> Please pay now, put your order number in the payment note, then tap <b>I've Paid</b> below.</p></div>
+<p class="note"><b>Your order is not complete until you pay.</b> Please pay now using one of the options below.</p></div>
 <pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
+<div id="ppbtns" style="margin:10px 0"></div><p class="note" id="pperr"></p>
+<p class="note" style="text-align:center"><b>Or use the Venmo app</b> (put your order # in the note: <b id="cnote"></b>):</p>
 <a class="big btn" id="vlink" href="#">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</a>
-<a class="big btn alt" id="clink" href="#">Pay with Cash App ($SamWhisenhunt)</a>
-<div style="background:#fffaf0;border:2px dashed var(--brown2);border-radius:10px;padding:10px;text-align:center">
-<div>In Cash App, <b>type this amount: $<span class="pt">0</span></b></div>
-<div>Put order # in the note: <b id="cnote"></b></div>
-</div>
 <div style="margin:14px 0;text-align:center">
 <p class="note" id="paying">Paying from: <b id="pfname"></b> <a href="#" id="chg">(change)</a></p>
 <input id="payer" style="display:none" aria-label="Name your payment came from">
 <p><button type="button" id="paidbtn" style="width:100%" disabled>I've Paid</button></p>
-<p class="note" id="hint">Tap Venmo or Cash App above to pay, then come back and tap I've Paid.</p>
+<p class="note" id="hint">Paid in the Venmo app? Come back and tap I've Paid. (PayPal and card payments finish automatically.)</p>
 <p class="note" id="err2"></p></div></div>
 
 <div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Order <b id="dnum"></b>:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
@@ -75,7 +73,6 @@ a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;paddin
 </main><footer>Thank you for supporting Ray Edward's Memorial Turkey Shoot</footer>
 <script>
 /* ==== EDIT THESE ==== */
-const CASHTAG = "SamWhisenhunt";        // Cash App $cashtag without the $
 const VENMO   = "dubyallc";        // Venmo username without the @
 const ORDER_EMAIL = "sam@dubyallc.com";
 /* ==================== */
@@ -111,18 +108,28 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify({O,PM,payer:payer.va
 function showPay(){const {num,name,T,summary}=O,note=`Order ${num} ${name}`;
 $("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
 $("vlink").href=MOBILE?`venmo://paycharge?txn=pay&recipients=${VENMO}&amount=${T}&note=${encodeURIComponent(note)}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
-$("clink").href=`https://cash.app/$${CASHTAG}/${T}`;
+renderPP();
 canPaid();$("f").style.display="none";$("done").style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()}
 function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;PM=d.PM||null;payer.value=d.payer||O.name;showPay()}}catch(e){}}
 function canPaid(){$("paidbtn").disabled=!(PM&&payer.value.trim());$("pfname").textContent=payer.value.trim()||"(enter name)"}
 payer.oninput=()=>{canPaid();save()};
 $("chg").onclick=e=>{e.preventDefault();payer.style.display="block";payer.focus();$("paying").style.display="none"};
 $("vlink").addEventListener("click",()=>{PM="Venmo";save();canPaid();if(MOBILE){const t=setTimeout(()=>{if(!document.hidden)location.href=`https://account.venmo.com/u/${VENMO}`},1500);const c=()=>{if(document.hidden)clearTimeout(t)};document.addEventListener("visibilitychange",c,{once:true});window.addEventListener("pagehide",()=>clearTimeout(t),{once:true})}});
-$("clink").addEventListener("click",()=>{PM="Cash App";save();canPaid()});
 window.addEventListener("pageshow",restore);restore();
-$("paidbtn").onclick=async()=>{const pmv=PM,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
+$("paidbtn").onclick=()=>confirmPaid(PM,payer.value.trim());
+async function confirmPaid(pmv,pf){const b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
 try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
 catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
 try{localStorage.removeItem(KEY)}catch(e){}$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
-sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()};
+sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()}
+let ppDone=false,ppSrc="paypal";
+function renderPP(){if(ppDone)return;if(!window.paypal||!paypal.Buttons){$("pperr").textContent="PayPal is loading… if it doesn't appear, use Venmo below.";setTimeout(renderPP,1500);return}
+ppDone=true;$("pperr").textContent="";
+paypal.Buttons({style:{layout:"vertical",shape:"rect",label:"pay"},
+onClick:d=>{ppSrc=(d&&d.fundingSource)||"paypal"},
+createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{currency_code:"USD",value:String(O.T)},description:"Turkey Shoot shirts – Order "+O.num,custom_id:O.num,invoice_id:O.num}]}),
+onApprove:(d,a)=>a.order.capture().then(det=>{const n=det&&det.payer&&det.payer.name;const pf=n?((n.given_name||"")+" "+(n.surname||"")).trim():(det&&det.payer&&det.payer.email_address)||O.name;
+const m=ppSrc=="card"?"Card":ppSrc=="venmo"?"Venmo (PayPal)":"PayPal";return confirmPaid(m,pf||O.name)}),
+onError:e=>{$("pperr").textContent="PayPal had a problem: "+(e&&e.message||e)+". Please try again or use Venmo below."}
+}).render("#ppbtns").catch(e=>{$("pperr").textContent="PayPal couldn't load. Please use Venmo below."})}
 </script></body></html>
