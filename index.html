@@ -41,28 +41,35 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 
 <form id="f" class="card"><h2>Place Your Order</h2>
 <div id="items"></div><button type="button" class="alt" id="add">+ Add another item</button>
-<div class="total">Total: $<span id="tot">0</span></div>
+<div class="total">Total: $<span class="tt">0</span></div>
 <label>Name *</label><input name="name" required>
 <label>Phone *</label><input name="phone" type="tel" required>
 <label>Email (optional)</label><input name="email" type="email">
-<label>Payment method *</label>
-<div class="pay"><label><input type="radio" name="pay" value="Cash App" required> Cash App</label><label><input type="radio" name="pay" value="Venmo"> Venmo</label></div>
-<p class="note">Payment by Cash App or Venmo only. Please put your name in the payment note.</p>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
-<p class="note"><b>Orders are confirmed once payment is received.</b></p>
-<div id="cabox" style="display:none;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0;text-align:center">
-<div>Type this amount in Cash App:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="tt">0</span></div>
-<div>to <b>$SamWhisenhunt</b></div>
-<div>Put your name in the note:<br><b id="cnote">Your Name - Turkey Shoot shirts</b></div>
-<p><button type="button" class="alt" id="cpnote">Copy note</button></p></div>
-<p><button type="button" id="paybtn" style="width:100%">Pay $<span class="tt">0</span> Now</button></p>
-<div id="step2" style="display:none;border:2px dashed var(--orange);border-radius:10px;padding:10px;margin:10px 0">
-<label>Name or @username your payment came from *</label><input id="payer">
-<label style="font-weight:normal"><input type="checkbox" id="sent" style="width:auto"> I have sent $<span class="tt">0</span> via <span id="pmname">Cash App</span></label></div>
-<p><button type="submit" id="sub" style="width:100%" disabled>Submit Order</button></p>
+<p class="note">Payment by Venmo or Cash App on the next screen. <b>Orders are confirmed once payment is received.</b></p>
+<p><button type="submit" id="sub" style="width:100%">Order</button></p>
 <p class="note" id="err"></p></form>
 
-<div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Your order was received:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
+<div id="paycard" class="card" style="display:none"><h2>Pay for Your Order</h2>
+<div style="text-align:center;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0">
+<div>Your order number:</div><div style="font-size:2rem;font-weight:bold;color:var(--brown)" id="onum"></div>
+<div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
+<p class="note">Your order was saved. Please pay now and <b>put your order number in the payment note</b>.</p></div>
+<pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
+<a class="big" id="vlink" href="#" target="_blank" rel="noopener"><button type="button" style="width:100%">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</button></a>
+<a class="big" id="clink" href="#" target="_blank" rel="noopener"><button type="button" class="alt" style="width:100%">Pay with Cash App ($SamWhisenhunt)</button></a>
+<div style="background:#fffaf0;border:2px dashed var(--brown2);border-radius:10px;padding:10px;text-align:center">
+<div>In Cash App, <b>type this amount: $<span class="pt">0</span></b></div>
+<div>Put order # in the note: <b id="cnote"></b></div>
+<p><button type="button" class="alt" id="cpnote">Copy note</button></p></div>
+<div style="border:2px dashed var(--orange);border-radius:10px;padding:10px;margin:14px 0">
+<label>Which did you use? *</label>
+<div class="pay"><label><input type="radio" name="pm" value="Venmo"> Venmo</label><label><input type="radio" name="pm" value="Cash App"> Cash App</label></div>
+<label>Name or @username your payment came from *</label><input id="payer">
+<p><button type="button" id="paidbtn" style="width:100%" disabled>I've Paid</button></p>
+<p class="note" id="err2"></p></div></div>
+
+<div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Order <b id="dnum"></b>:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
 <p>Payment of <b><span id="amt"></span></b> via <span id="pm"></span> from <b><span id="nm"></span></b> noted. Orders are confirmed once payment is received.</p></div>
 </main><footer>Thank you for supporting Ray Edward's Memorial Turkey Shoot</footer>
 <script>
@@ -73,7 +80,8 @@ const ORDER_EMAIL = "sam@dubyallc.com";
 /* ==================== */
 const SIZES=["YS","YM","YL","S","M","L","XL","2X","3X"];
 const price=(p,s)=>{const y=s[0]=="Y",b=s=="2X"||s=="3X";return p=="Hoodie"?(y?35:b?45:40):(b?35:30)};
-const items=document.getElementById("items");
+const $=id=>document.getElementById(id);
+const items=$("items");
 function addRow(){const d=document.createElement("div");d.className="row";
 d.innerHTML=`<div><label>Item</label><select class="p"><option>Long Sleeve</option><option>Hoodie</option></select></div>
 <div><label>Size</label><select class="s">${SIZES.map(s=>`<option>${s}</option>`).join("")}</select></div>
@@ -82,33 +90,32 @@ d.innerHTML=`<div><label>Item</label><select class="p"><option>Long Sleeve</opti
 d.querySelector(".x").onclick=()=>{if(items.children.length>1){d.remove();calc()}};
 d.oninput=d.onchange=calc;items.appendChild(d);calc()}
 function lines(){return[...items.children].map(r=>{const p=r.querySelector(".p").value,s=r.querySelector(".s").value,q=Math.max(1,parseInt(r.querySelector(".q").value)||1);return{p,s,q,each:price(p,s),sub:price(p,s)*q}})}
-function calc(){const t=lines().reduce((a,l)=>a+l.sub,0);document.getElementById("tot").textContent=t;document.querySelectorAll(".tt").forEach(x=>x.textContent=t)}
-document.getElementById("add").onclick=addRow;addRow();
-function total(){return lines().reduce((a,l)=>a+l.sub,0)}
-function noteTxt(){return (document.getElementById("f").name.value.trim()||"Your Name")+" - Turkey Shoot shirts"}
+function calc(){const t=lines().reduce((a,l)=>a+l.sub,0);document.querySelectorAll(".tt").forEach(x=>x.textContent=t)}
+$("add").onclick=addRow;addRow();
 async function copy(t,b){try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(_){}a.remove()}if(b){const o=b.textContent;b.textContent="Copied!";setTimeout(()=>b.textContent=o,1500)}}
-function upBox(){const f=document.getElementById("f");cabox.style.display=f.pay.value=="Cash App"?"block":"none";cnote.textContent=noteTxt()}
-cpnote.onclick=()=>copy(noteTxt(),cpnote);
-document.getElementById("f").addEventListener("input",upBox);document.getElementById("f").addEventListener("change",upBox);
-let paid=false;
-function canSubmit(){document.getElementById("sub").disabled=!(paid&&sent.checked&&payer.value.trim())}
-function payLink(){const f=document.getElementById("f"),T=lines().reduce((a,l)=>a+l.sub,0),name=f.name.value.trim();
-return f.pay.value=="Cash App"?`https://cash.app/$${CASHTAG}/${T}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(name+" - Turkey Shoot shirts")}`}
-function resetPay(){paid=false;step2.style.display="none";sent.checked=false;canSubmit()}
-document.getElementById("paybtn").onclick=()=>{const f=document.getElementById("f");
-if(!f.name.value.trim()||!f.phone.value.trim()||!f.pay.value){err.textContent="Please fill in your name, phone, and pick Cash App or Venmo first.";f.reportValidity();return}
-err.textContent="";window.open(payLink(),"_blank");paid=true;pmname.textContent=f.pay.value;step2.style.display="block";canSubmit()};
-sent.onchange=payer.oninput=canSubmit;
-document.querySelectorAll('input[name=pay]').forEach(r=>r.onchange=resetPay);
-items.addEventListener("change",resetPay);items.addEventListener("input",resetPay);
-document.getElementById("f").onsubmit=async e=>{e.preventDefault();const f=e.target,L=lines(),T=L.reduce((a,l)=>a+l.sub,0);
-if(!(paid&&sent.checked&&payer.value.trim()))return;
-const name=f.name.value.trim(),pay=f.pay.value,pf=payer.value.trim();
+function genNum(){const d=new Date(),p=n=>String(n).padStart(2,"0");return "W-"+p(d.getMonth()+1)+p(d.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase()}
+async function send(data){const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(Object.assign({_template:"box",_captcha:"false"},data))});if(!r.ok)throw 0}
+let O=null;
+$("f").onsubmit=async e=>{e.preventDefault();const f=e.target;
+if(!f.name.value.trim()||!f.phone.value.trim()){err.textContent="Please fill in your name and phone.";f.reportValidity();return}
+const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),num=genNum();
 const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join("\n")+`\nTOTAL: $${T}`;
-const btn=document.getElementById("sub");btn.disabled=true;btn.textContent="Sending...";
-try{const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
-body:JSON.stringify({_subject:`Shirt Order: ${name} – $${T} (${pay}, paid from ${pf}) – Payment claimed: yes`,_template:"box",_captcha:"false",Name:name,Phone:f.phone.value,Email:f.email.value||"(none)",Payment:pay,"Paid from":pf,"Payment claimed":"yes",Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})});
-if(!r.ok)throw 0;}catch(x){btn.disabled=false;btn.textContent="Submit Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
-f.style.display="none";const D=document.getElementById("done");D.style.display="block";
-sum.textContent=summary;amt.textContent="$"+T;pm.textContent=pay;nm.textContent=pf;D.scrollIntoView()};
+const btn=$("sub");btn.disabled=true;btn.textContent="Saving order...";err.textContent="";
+try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – UNPAID`,"Order #":num,Status:"unpaid",Name:name,Phone:f.phone.value,Email:f.email.value||"(none)",Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
+catch(x){btn.disabled=false;btn.textContent="Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
+O={num,name,T,summary};const note=`Order ${num} ${name}`;
+$("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
+$("vlink").href=`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
+$("clink").href=`https://cash.app/$${CASHTAG}/${T}`;
+f.style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()};
+$("cpnote").onclick=()=>copy($("cnote").textContent,$("cpnote"));
+function canPaid(){$("paidbtn").disabled=!(document.querySelector('input[name=pm]:checked')&&payer.value.trim())}
+payer.oninput=canPaid;document.querySelectorAll('input[name=pm]').forEach(r=>r.onchange=canPaid);
+$("vlink").addEventListener("click",()=>{document.querySelector('input[name=pm][value=Venmo]').checked=true;canPaid()});
+$("clink").addEventListener("click",()=>{document.querySelector('input[name=pm][value="Cash App"]').checked=true;canPaid()});
+$("paidbtn").onclick=async()=>{const pmv=document.querySelector('input[name=pm]:checked').value,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
+try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAID-CLAIMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"paid-claimed",Name:O.name,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
+catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
+$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
+sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()};
 </script></body></html>
