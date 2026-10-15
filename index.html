@@ -58,22 +58,15 @@ a.btn{display:block;background:var(--orange);color:#fff;border-radius:8px;paddin
 <div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
 <p class="note"><b>Your order is not complete until you pay.</b> Please pay now using one of the options below.</p></div>
 <pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
-<div id="ppbtns" style="margin:10px 0"></div><p class="note" id="pperr"></p>
-<p class="note" style="text-align:center"><b>Or use the Venmo app</b> (put your order # in the note: <b id="cnote"></b>):</p>
-<a class="big btn" id="vlink" href="#">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</a>
-<div style="margin:14px 0;text-align:center">
-<p class="note" id="paying">Paying from: <b id="pfname"></b> <a href="#" id="chg">(change)</a></p>
-<input id="payer" style="display:none" aria-label="Name your payment came from">
-<p><button type="button" id="paidbtn" style="width:100%" disabled>I've Paid</button></p>
-<p class="note" id="hint">Paid in the Venmo app? Come back and tap I've Paid. (PayPal and card payments finish automatically.)</p>
-<p class="note" id="err2"></p></div></div>
+<div id="ppbtns" style="margin:10px 0"></div>
+<p class="note" id="pperr"></p>
+</div>
 
 <div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Order <b id="dnum"></b>:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
 <p>Payment of <b><span id="amt"></span></b> via <span id="pm"></span> from <b><span id="nm"></span></b> noted. Orders are confirmed once payment is received.</p></div>
 </main><footer>Thank you for supporting Ray Edward's Memorial Turkey Shoot</footer>
 <script>
 /* ==== EDIT THESE ==== */
-const VENMO   = "dubyallc";        // Venmo username without the @
 const ORDER_EMAIL = "sam@dubyallc.com";
 /* ==================== */
 const SIZES=["YS","YM","YL","S","M","L","XL","2X","3X"];
@@ -93,7 +86,7 @@ $("add").onclick=addRow;addRow();
 async function copy(t,b){try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(_){}a.remove()}if(b){const o=b.textContent;b.textContent="Copied!";setTimeout(()=>b.textContent=o,1500)}}
 function genNum(){const d=new Date(),p=n=>String(n).padStart(2,"0");return "W-"+p(d.getMonth()+1)+p(d.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase()}
 async function send(data){const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(Object.assign({_template:"box",_captcha:"false"},data))});if(!r.ok)throw 0}
-let O=null,PM=null;
+let O=null;
 $("f").onsubmit=async e=>{e.preventDefault();const f=e.target;
 if(!f.reportValidity()||!f.name.value.trim()||!f.phone.value.trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())){err.textContent="Please fill in your name, phone, and a valid email.";f.reportValidity();return}
 const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),email=f.email.value.trim(),num=genNum();
@@ -101,35 +94,27 @@ const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join
 const btn=$("sub");btn.disabled=true;btn.textContent="Saving order...";err.textContent="";
 try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – AWAITING PAYMENT`,"Order #":num,Status:"awaiting payment",Name:name,Phone:f.phone.value,Email:email,Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
 catch(x){btn.disabled=false;btn.textContent="Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
-O={num,name,email,T,summary};PM=null;payer.value=name;save();showPay()};
-const MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform=="MacIntel"&&navigator.maxTouchPoints>1);
+O={num,name,email,T,summary};save();showPay()};
 const KEY="tsShirtOrder";
-function save(){try{localStorage.setItem(KEY,JSON.stringify({O,PM,payer:payer.value,ts:Date.now()}))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({O,ts:Date.now()}))}catch(e){}}
 function showPay(){const {num,name,T,summary}=O,note=`Order ${num} ${name}`;
-$("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
-$("vlink").href=MOBILE?`venmo://paycharge?txn=pay&recipients=${VENMO}&amount=${T}&note=${encodeURIComponent(note)}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
+$("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;
 renderPP();
-canPaid();$("f").style.display="none";$("done").style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()}
-function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;PM=d.PM||null;payer.value=d.payer||O.name;showPay()}}catch(e){}}
-function canPaid(){$("paidbtn").disabled=!(PM&&payer.value.trim());$("pfname").textContent=payer.value.trim()||"(enter name)"}
-payer.oninput=()=>{canPaid();save()};
-$("chg").onclick=e=>{e.preventDefault();payer.style.display="block";payer.focus();$("paying").style.display="none"};
-$("vlink").addEventListener("click",()=>{PM="Venmo";save();canPaid();if(MOBILE){const t=setTimeout(()=>{if(!document.hidden)location.href=`https://account.venmo.com/u/${VENMO}`},1500);const c=()=>{if(document.hidden)clearTimeout(t)};document.addEventListener("visibilitychange",c,{once:true});window.addEventListener("pagehide",()=>clearTimeout(t),{once:true})}});
+$("f").style.display="none";$("done").style.display="none";$("paycard").style.display="block";$("paycard").scrollIntoView()}
+function restore(){if(O)return;try{const d=JSON.parse(localStorage.getItem(KEY)||"null");if(d&&d.O&&Date.now()-(d.ts||0)<864e5){O=d.O;showPay()}}catch(e){}}
 window.addEventListener("pageshow",restore);restore();
-$("paidbtn").onclick=()=>confirmPaid(PM,payer.value.trim());
-async function confirmPaid(pmv,pf){const b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
-try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
-catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
+async function confirmPaid(pmv,pf){try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
+catch(x){$("pperr").textContent="Payment went through, but the confirmation email failed. Please screenshot this page and text us your order #.";return}
 try{localStorage.removeItem(KEY)}catch(e){}$("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
 sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()}
 let ppDone=false,ppSrc="paypal";
-function renderPP(){if(ppDone)return;if(!window.paypal||!paypal.Buttons){$("pperr").textContent="PayPal is loading… if it doesn't appear, use Venmo below.";setTimeout(renderPP,1500);return}
+function renderPP(){if(ppDone)return;if(!window.paypal||!paypal.Buttons){$("pperr").textContent="PayPal is loading…";setTimeout(renderPP,1500);return}
 ppDone=true;$("pperr").textContent="";
 paypal.Buttons({style:{layout:"vertical",shape:"rect",label:"pay"},
 onClick:d=>{ppSrc=(d&&d.fundingSource)||"paypal"},
 createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{currency_code:"USD",value:String(O.T)},description:"Turkey Shoot shirts – Order "+O.num,custom_id:O.num,invoice_id:O.num}]}),
 onApprove:(d,a)=>a.order.capture().then(det=>{const n=det&&det.payer&&det.payer.name;const pf=n?((n.given_name||"")+" "+(n.surname||"")).trim():(det&&det.payer&&det.payer.email_address)||O.name;
 const m=ppSrc=="card"?"Card":ppSrc=="venmo"?"Venmo (PayPal)":"PayPal";return confirmPaid(m,pf||O.name)}),
-onError:e=>{$("pperr").textContent="PayPal had a problem: "+(e&&e.message||e)+". Please try again or use Venmo below."}
-}).render("#ppbtns").catch(e=>{$("pperr").textContent="PayPal couldn't load. Please use Venmo below."})}
+onError:e=>{$("pperr").textContent="PayPal had a problem: "+(e&&e.message||e)+". Please try again."}
+}).render("#ppbtns").catch(e=>{$("pperr").textContent="PayPal couldn't load. Please refresh and try again."})}
 </script></body></html>
