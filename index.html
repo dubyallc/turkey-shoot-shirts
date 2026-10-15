@@ -44,9 +44,9 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <div class="total">Total: $<span class="tt">0</span></div>
 <label>Name *</label><input name="name" required>
 <label>Phone *</label><input name="phone" type="tel" required>
-<label>Email (optional)</label><input name="email" type="email">
+<label>Email *</label><input name="email" type="email" required>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
-<p class="note">Payment by Venmo or Cash App on the next screen. <b>Orders are confirmed once payment is received.</b></p>
+<p class="note">Pay by Venmo or Cash App on the next screen to complete your order. <b>Orders are confirmed once payment is received.</b></p>
 <p><button type="submit" id="sub" style="width:100%">Order</button></p>
 <p class="note" id="err"></p></form>
 
@@ -54,7 +54,7 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <div style="text-align:center;background:#fff3e3;border:3px solid var(--orange);border-radius:12px;padding:12px;margin:10px 0">
 <div>Your order number:</div><div style="font-size:2rem;font-weight:bold;color:var(--brown)" id="onum"></div>
 <div>Amount due:</div><div style="font-size:2.4rem;font-weight:bold;color:var(--brown)">$<span class="pt">0</span></div>
-<p class="note">Your order was saved. Please pay now and <b>put your order number in the payment note</b>.</p></div>
+<p class="note"><b>Your order is not complete until you pay.</b> Please pay now, put your order number in the payment note, then tap <b>I've Paid</b> below.</p></div>
 <pre id="psum" style="white-space:pre-wrap;font-family:inherit"></pre>
 <a class="big" id="vlink" href="#" target="_blank" rel="noopener"><button type="button" style="width:100%">Pay $<span class="pt">0</span> with Venmo (@dubyallc)</button></a>
 <a class="big" id="clink" href="#" target="_blank" rel="noopener"><button type="button" class="alt" style="width:100%">Pay with Cash App ($SamWhisenhunt)</button></a>
@@ -97,13 +97,13 @@ function genNum(){const d=new Date(),p=n=>String(n).padStart(2,"0");return "W-"+
 async function send(data){const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(Object.assign({_template:"box",_captcha:"false"},data))});if(!r.ok)throw 0}
 let O=null;
 $("f").onsubmit=async e=>{e.preventDefault();const f=e.target;
-if(!f.name.value.trim()||!f.phone.value.trim()){err.textContent="Please fill in your name and phone.";f.reportValidity();return}
-const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),num=genNum();
+if(!f.reportValidity()||!f.name.value.trim()||!f.phone.value.trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())){err.textContent="Please fill in your name, phone, and a valid email.";f.reportValidity();return}
+const L=lines(),T=L.reduce((a,l)=>a+l.sub,0),name=f.name.value.trim(),email=f.email.value.trim(),num=genNum();
 const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join("\n")+`\nTOTAL: $${T}`;
 const btn=$("sub");btn.disabled=true;btn.textContent="Saving order...";err.textContent="";
-try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – UNPAID`,"Order #":num,Status:"unpaid",Name:name,Phone:f.phone.value,Email:f.email.value||"(none)",Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
+try{await send({_subject:`Shirt Order ${num}: ${name} – $${T} – AWAITING PAYMENT`,"Order #":num,Status:"awaiting payment",Name:name,Phone:f.phone.value,Email:email,Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})}
 catch(x){btn.disabled=false;btn.textContent="Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
-O={num,name,T,summary};const note=`Order ${num} ${name}`;
+O={num,name,email,T,summary};const note=`Order ${num} ${name}`;
 $("onum").textContent=num;document.querySelectorAll(".pt").forEach(x=>x.textContent=T);$("psum").textContent=summary;$("cnote").textContent=note;
 $("vlink").href=`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(note)}`;
 $("clink").href=`https://cash.app/$${CASHTAG}/${T}`;
@@ -114,7 +114,7 @@ payer.oninput=canPaid;document.querySelectorAll('input[name=pm]').forEach(r=>r.o
 $("vlink").addEventListener("click",()=>{document.querySelector('input[name=pm][value=Venmo]').checked=true;canPaid()});
 $("clink").addEventListener("click",()=>{document.querySelector('input[name=pm][value="Cash App"]').checked=true;canPaid()});
 $("paidbtn").onclick=async()=>{const pmv=document.querySelector('input[name=pm]:checked').value,pf=payer.value.trim(),b=$("paidbtn");b.disabled=true;b.textContent="Sending...";err2.textContent="";
-try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAID-CLAIMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"paid-claimed",Name:O.name,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
+try{await send({_subject:`Shirt Order ${O.num}: ${O.name} – $${O.T} – PAYMENT CONFIRMED (${pmv}, from ${pf})`,"Order #":O.num,Status:"payment confirmed",Name:O.name,Email:O.email,Payment:pmv,"Paid from":pf,Total:"$"+O.T,Order:O.summary})}
 catch(x){b.disabled=false;b.textContent="I've Paid";err2.textContent="Sorry, that didn't go through. Please try again.";return}
 $("paycard").style.display="none";const D=$("done");D.style.display="block";$("dnum").textContent=O.num;
 sum.textContent=O.summary;amt.textContent="$"+O.T;pm.textContent=pmv;nm.textContent=pf;D.scrollIntoView()};
