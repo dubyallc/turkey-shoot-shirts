@@ -49,13 +49,16 @@ footer{text-align:center;padding:20px;color:#6b4226;font-size:.85rem}
 <div class="pay"><label><input type="radio" name="pay" value="Cash App" required> Cash App</label><label><input type="radio" name="pay" value="Venmo"> Venmo</label></div>
 <p class="note">Payment by Cash App or Venmo only. Please put your name in the payment note.</p>
 <label>Notes</label><textarea name="notes" rows="3"></textarea>
-<p><button type="submit" id="sub" style="width:100%">Submit Order</button></p>
+<p class="note"><b>Orders are confirmed once payment is received.</b></p>
+<p><button type="button" id="paybtn" style="width:100%">Pay $<span class="tt">0</span> Now</button></p>
+<div id="step2" style="display:none;border:2px dashed var(--orange);border-radius:10px;padding:10px;margin:10px 0">
+<label>Name or @username your payment came from *</label><input id="payer">
+<label style="font-weight:normal"><input type="checkbox" id="sent" style="width:auto"> I have sent $<span class="tt">0</span> via <span id="pmname">Cash App</span></label></div>
+<p><button type="submit" id="sub" style="width:100%" disabled>Submit Order</button></p>
 <p class="note" id="err"></p></form>
 
 <div id="done" class="card"><h2>Thank you!</h2><div class="deadline"><b>Order by November 8, 2026 to pick up your shirt at the Turkey Shoot!</b><br>Orders will be accepted until the end of the Turkey Shoot.</div><p>Your order was received:</p><pre id="sum" style="white-space:pre-wrap;font-family:inherit"></pre>
-<p><b>Please pay <span id="amt"></span> now</b> with <span id="pm"></span>. Put <b><span id="nm"></span></b> in the payment note.</p>
-<a id="paylink" class="big" target="_blank"><button type="button" style="width:100%">Pay Now</button></a>
-<p class="note" id="handle"></p></div>
+<p>Payment of <b><span id="amt"></span></b> via <span id="pm"></span> from <b><span id="nm"></span></b> noted. Orders are confirmed once payment is received.</p></div>
 </main><footer>Thank you for supporting Ray Edward's Memorial Turkey Shoot</footer>
 <script>
 /* ==== EDIT THESE ==== */
@@ -74,18 +77,27 @@ d.innerHTML=`<div><label>Item</label><select class="p"><option>Long Sleeve</opti
 d.querySelector(".x").onclick=()=>{if(items.children.length>1){d.remove();calc()}};
 d.oninput=d.onchange=calc;items.appendChild(d);calc()}
 function lines(){return[...items.children].map(r=>{const p=r.querySelector(".p").value,s=r.querySelector(".s").value,q=Math.max(1,parseInt(r.querySelector(".q").value)||1);return{p,s,q,each:price(p,s),sub:price(p,s)*q}})}
-function calc(){document.getElementById("tot").textContent=lines().reduce((a,l)=>a+l.sub,0)}
+function calc(){const t=lines().reduce((a,l)=>a+l.sub,0);document.getElementById("tot").textContent=t;document.querySelectorAll(".tt").forEach(x=>x.textContent=t)}
 document.getElementById("add").onclick=addRow;addRow();
+let paid=false;
+function canSubmit(){document.getElementById("sub").disabled=!(paid&&sent.checked&&payer.value.trim())}
+function payLink(){const f=document.getElementById("f"),T=lines().reduce((a,l)=>a+l.sub,0),name=f.name.value.trim();
+return f.pay.value=="Cash App"?`https://cash.app/$${CASHTAG}/${T}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${encodeURIComponent(name+" - Turkey Shoot shirts")}`}
+function resetPay(){paid=false;step2.style.display="none";sent.checked=false;canSubmit()}
+document.getElementById("paybtn").onclick=()=>{const f=document.getElementById("f");
+if(!f.name.value.trim()||!f.phone.value.trim()||!f.pay.value){err.textContent="Please fill in your name, phone, and pick Cash App or Venmo first.";f.reportValidity();return}
+err.textContent="";window.open(payLink(),"_blank");paid=true;pmname.textContent=f.pay.value;step2.style.display="block";canSubmit()};
+sent.onchange=payer.oninput=canSubmit;
+document.querySelectorAll('input[name=pay]').forEach(r=>r.onchange=resetPay);
+items.addEventListener("change",resetPay);items.addEventListener("input",resetPay);
 document.getElementById("f").onsubmit=async e=>{e.preventDefault();const f=e.target,L=lines(),T=L.reduce((a,l)=>a+l.sub,0);
-const name=f.name.value.trim(),pay=f.pay.value;
+if(!(paid&&sent.checked&&payer.value.trim()))return;
+const name=f.name.value.trim(),pay=f.pay.value,pf=payer.value.trim();
 const summary=L.map(l=>`${l.q} x ${l.p} (${l.s}) @ $${l.each} = $${l.sub}`).join("\n")+`\nTOTAL: $${T}`;
 const btn=document.getElementById("sub");btn.disabled=true;btn.textContent="Sending...";
 try{const r=await fetch("https://formsubmit.co/ajax/"+ORDER_EMAIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
-body:JSON.stringify({_subject:`Shirt Order: ${name} – $${T} (${pay})`,_template:"box",_captcha:"false",Name:name,Phone:f.phone.value,Email:f.email.value||"(none)",Payment:pay,Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})});
-if(!r.ok)throw 0;}catch(x){btn.disabled=false;btn.textContent="Submit Order";document.getElementById("err").textContent="Sorry, the order didn't go through. Please try again.";return}
-const note=encodeURIComponent(`${name} - Turkey Shoot shirts`);
-const link=pay=="Cash App"?`https://cash.app/$${CASHTAG}/${T}`:`https://venmo.com/${VENMO}?txn=pay&amount=${T}&note=${note}`;
+body:JSON.stringify({_subject:`Shirt Order: ${name} – $${T} (${pay}, paid from ${pf}) – Payment claimed: yes`,_template:"box",_captcha:"false",Name:name,Phone:f.phone.value,Email:f.email.value||"(none)",Payment:pay,"Paid from":pf,"Payment claimed":"yes",Order:summary,Total:"$"+T,Notes:f.notes.value||"(none)"})});
+if(!r.ok)throw 0;}catch(x){btn.disabled=false;btn.textContent="Submit Order";err.textContent="Sorry, the order didn't go through. Please try again.";return}
 f.style.display="none";const D=document.getElementById("done");D.style.display="block";
-sum.textContent=summary;amt.textContent="$"+T;pm.textContent=pay;nm.textContent=name;paylink.href=link;
-handle.textContent=pay=="Cash App"?`Cash App: $${CASHTAG}`:`Venmo: @${VENMO}`;D.scrollIntoView()};
+sum.textContent=summary;amt.textContent="$"+T;pm.textContent=pay;nm.textContent=pf;D.scrollIntoView()};
 </script></body></html>
